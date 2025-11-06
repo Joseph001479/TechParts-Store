@@ -311,17 +311,23 @@ class CartSystem {
         };
     }
 
-    // 🔥 CRIAR TRANSAÇÃO REAL NO GHOSTS PAY V2
+    // 🔥 CRIAR TRANSAÇÃO REAL NO GHOSTS PAY V2 - ESTRUTURA CORRIGIDA
     async createRealGhostsPayTransaction(orderData) {
         try {
             const config = window.paymentConfig.getConfig();
             const credentials = btoa(`${config.ghostspay.secretKey}:${config.ghostspay.companyId}`);
             
-            // ✅ ESTRUTURA CORRETA GHOSTS PAY V2
+            // ✅ ESTRUTURA CORRETA CONFORME DOCUMENTAÇÃO GHOSTS PAY
             const transactionData = {
                 amount: orderData.amount,
                 description: `Pedido ${orderData.order_id} - ${config.store.name}`,
-                customer: orderData.customer,
+                customer: {
+                    name: orderData.customer.name,
+                    email: orderData.customer.email,
+                    document: orderData.customer.document.replace(/\D/g, ''), // Apenas números
+                    phone: orderData.customer.phone.replace(/\D/g, ''), // Apenas números
+                    address: orderData.customer.address
+                },
                 items: orderData.items.map(item => ({
                     title: item.name,
                     unitPrice: item.price,
@@ -331,17 +337,29 @@ class CartSystem {
                 paymentMethod: orderData.paymentMethod,
                 postbackUrl: config.store.successURL,
                 metadata: orderData.metadata,
-                installments: 1
+                installments: orderData.paymentMethod === 'CARD' ? 1 : undefined // Apenas para cartão
             };
+
+            // Remover campos undefined
+            Object.keys(transactionData).forEach(key => {
+                if (transactionData[key] === undefined) {
+                    delete transactionData[key];
+                }
+            });
 
             console.log('📤 Enviando transação Ghosts Pay V2:', transactionData);
 
-            const response = await fetch(`${config.ghostspay.baseURL}/transactions`, {
+            // ✅ USAR PROXY EXTERNO PARA EVITAR CORS
+            const proxyURL = 'https://corsproxy.io/?';
+            const apiURL = encodeURIComponent(`${config.ghostspay.baseURL}/transactions`);
+            
+            const response = await fetch(proxyURL + apiURL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Basic ${credentials}`,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify(transactionData)
             });
@@ -360,14 +378,46 @@ class CartSystem {
                     transaction_id: result.id
                 };
             } else {
-                throw new Error('Resposta inválida da API');
+                throw new Error('URL de pagamento não retornada pela API');
             }
 
         } catch (error) {
             console.error('❌ Erro na transação:', error);
+            
+            // ✅ TENTATIVA COM OUTRO PROXY
+            try {
+                const config = window.paymentConfig.getConfig();
+                const credentials = btoa(`${config.ghostspay.secretKey}:${config.ghostspay.companyId}`);
+                
+                const proxyURL2 = 'https://api.allorigins.win/raw?url=';
+                const apiURL2 = encodeURIComponent(`${config.ghostspay.baseURL}/transactions`);
+                
+                const response = await fetch(proxyURL2 + apiURL2, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Basic ${credentials}`,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(transactionData)
+                });
+
+                const result = await response.json();
+                
+                if (result.payment_url || result.id) {
+                    return {
+                        success: true,
+                        payment_url: result.payment_url || `https://ghostspay.com/pay/${result.id}`,
+                        transaction_id: result.id
+                    };
+                }
+            } catch (secondError) {
+                console.error('❌ Erro também no segundo proxy:', secondError);
+            }
+            
             return {
                 success: false,
-                message: error.message || 'Erro ao processar pagamento'
+                message: 'Erro de conexão com o gateway de pagamento. Tente novamente em alguns instantes.'
             };
         }
     }
