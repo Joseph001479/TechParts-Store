@@ -1,4 +1,4 @@
-// 🛒 SISTEMA DE CARRINHO REAL - MODALUX
+// 🛒 SISTEMA DE CARRINHO REAL - MODALUX COM PROXY
 class CartSystem {
     constructor() {
         this.cart = this.loadCart();
@@ -10,7 +10,7 @@ class CartSystem {
         this.setupEventListeners();
         this.updateCartUI();
         this.checkPaymentReturn();
-        console.log('🛒 Carrinho MODALUX inicializado:', this.cart.length, 'itens');
+        console.log('💡 Carrinho MODALUX inicializado:', this.cart.length, 'itens');
     }
 
     loadCart() {
@@ -58,7 +58,7 @@ class CartSystem {
     }
 
     addToCart(product) {
-        console.log('🛒 Adicionando produto MODALUX:', product.name);
+        console.log('💡 Adicionando produto MODALUX:', product.name);
         
         const existingItem = this.cart.find(item => item.id === product.id);
         
@@ -217,13 +217,7 @@ class CartSystem {
             return;
         }
 
-        // 3. ✅ VERIFICAÇÃO DO SISTEMA DE PAGAMENTO
-        if (!window.paymentConfig) {
-            this.showMessage('❌ Sistema de pagamento indisponível', 'error');
-            return;
-        }
-
-        // 4. 🚀 PROCESSAR PAGAMENTO REAL
+        // 3. 🚀 PROCESSAR PAGAMENTO REAL
         await this.processRealPayment();
     }
 
@@ -304,9 +298,9 @@ class CartSystem {
         try {
             const config = window.paymentConfig.getConfig();
             
-            // ✅ USAR PROXY PARA EVITAR CORS
-            const proxyURL = 'https://cors-anywhere.herokuapp.com/';
-            const apiURL = `${config.ghostspay.baseURL}/transactions`;
+            // ✅ USAR PROXY PROFISSIONAL
+            const proxyURL = 'https://api.allorigins.win/raw?url=';
+            const apiURL = encodeURIComponent(`${config.ghostspay.baseURL}/transactions`);
             
             const credentials = btoa(`${config.ghostspay.secretKey}:${config.ghostspay.companyId}`);
             
@@ -325,7 +319,7 @@ class CartSystem {
 
             console.log('📤 Enviando transação MODALUX via proxy...', transactionData);
 
-            // ✅ TENTAR COM PROXY PRIMEIRO
+            // ✅ TENTAR COM PROXY ALLORIGINS
             const response = await fetch(proxyURL + apiURL, {
                 method: 'POST',
                 headers: {
@@ -337,13 +331,12 @@ class CartSystem {
                 body: JSON.stringify(transactionData)
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const result = await response.json();
             console.log('📥 Resposta do Ghosts Pay:', result);
-
-            if (!response.ok) {
-                const errorMsg = result.message || result.error || `Erro ${response.status}`;
-                throw new Error(errorMsg);
-            }
 
             if (result.payment_url) {
                 return {
@@ -352,18 +345,21 @@ class CartSystem {
                     transaction_id: result.id
                 };
             } else {
-                throw new Error('URL de pagamento não retornada');
+                throw new Error('URL de pagamento não retornada pela API');
             }
 
         } catch (error) {
-            console.error('❌ Erro com proxy, tentando direto...', error);
+            console.error('❌ Erro com proxy:', error);
             
-            // ✅ TENTATIVA DIRETA
+            // ✅ TENTATIVA COM CORS-PROXY.IO
             try {
                 const config = window.paymentConfig.getConfig();
                 const credentials = btoa(`${config.ghostspay.secretKey}:${config.ghostspay.companyId}`);
                 
-                const response = await fetch(`${config.ghostspay.baseURL}/transactions`, {
+                const proxyURL2 = 'https://corsproxy.io/?';
+                const apiURL2 = encodeURIComponent(`${config.ghostspay.baseURL}/transactions`);
+                
+                const response = await fetch(proxyURL2 + apiURL2, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -382,13 +378,13 @@ class CartSystem {
                         transaction_id: result.id
                     };
                 }
-            } catch (directError) {
-                console.error('❌ Erro também na tentativa direta:', directError);
+            } catch (secondError) {
+                console.error('❌ Erro também no segundo proxy:', secondError);
             }
             
             return {
                 success: false,
-                message: 'Erro de conexão - Tente novamente'
+                message: 'Sistema temporariamente indisponível. Tente novamente em alguns instantes.'
             };
         }
     }
