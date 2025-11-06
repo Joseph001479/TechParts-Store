@@ -1,4 +1,4 @@
-// 🛒 SISTEMA DE CARRINHO REAL - TECHPARTS
+// 🛒 SISTEMA DE CARRINHO REAL - MODALUX
 class CartSystem {
     constructor() {
         this.cart = this.loadCart();
@@ -10,12 +10,12 @@ class CartSystem {
         this.setupEventListeners();
         this.updateCartUI();
         this.checkPaymentReturn();
-        console.log('🛒 Carrinho REAL inicializado:', this.cart.length, 'itens');
+        console.log('🛒 Carrinho MODALUX inicializado:', this.cart.length, 'itens');
     }
 
     loadCart() {
         try {
-            const saved = localStorage.getItem('techparts_cart');
+            const saved = localStorage.getItem('modalux_cart');
             return saved ? JSON.parse(saved) : [];
         } catch (error) {
             console.error('❌ Erro ao carregar carrinho:', error);
@@ -25,7 +25,7 @@ class CartSystem {
 
     saveCart() {
         try {
-            localStorage.setItem('techparts_cart', JSON.stringify(this.cart));
+            localStorage.setItem('modalux_cart', JSON.stringify(this.cart));
         } catch (error) {
             console.error('❌ Erro ao salvar carrinho:', error);
         }
@@ -33,10 +33,10 @@ class CartSystem {
 
     cleanupCorruptedCart() {
         try {
-            const saved = localStorage.getItem('techparts_cart');
+            const saved = localStorage.getItem('modalux_cart');
             if (saved) JSON.parse(saved);
         } catch (error) {
-            localStorage.removeItem('techparts_cart');
+            localStorage.removeItem('modalux_cart');
             this.cart = [];
         }
     }
@@ -58,7 +58,7 @@ class CartSystem {
     }
 
     addToCart(product) {
-        console.log('🛒 Adicionando produto REAL:', product.name);
+        console.log('🛒 Adicionando produto MODALUX:', product.name);
         
         const existingItem = this.cart.find(item => item.id === product.id);
         
@@ -74,7 +74,7 @@ class CartSystem {
 
         this.saveCart();
         this.updateCartUI();
-        this.showMessage(`✅ ${product.name} adicionado ao carrinho!`, 'success');
+        this.showMessage(`💡 ${product.name} adicionado ao carrinho!`, 'success');
         
         setTimeout(() => this.openCart(), 800);
     }
@@ -123,7 +123,7 @@ class CartSystem {
         cartItems.innerHTML = '';
 
         if (this.cart.length === 0) {
-            cartItems.innerHTML = '<div class="empty-cart">🎁 Seu carrinho está vazio</div>';
+            cartItems.innerHTML = '<div class="empty-cart">💡 Seu carrinho está vazio</div>';
             return;
         }
 
@@ -170,7 +170,7 @@ class CartSystem {
         } else {
             checkoutBtn.disabled = false;
             checkoutBtn.style.opacity = '1';
-            checkoutBtn.innerHTML = `💳 Finalizar Compra - R$ ${total.toFixed(2)}`;
+            checkoutBtn.innerHTML = `💡 Finalizar Compra - R$ ${total.toFixed(2)}`;
         }
     }
 
@@ -196,14 +196,14 @@ class CartSystem {
         }
     }
 
-    // 💰 CHECKOUT REAL - APENAS PAGAMENTOS REAIS
+    // 💰 CHECKOUT REAL - PAGAMENTOS REAIS MODALUX
     async handleRealCheckout() {
-        console.log('💰 INICIANDO PROCESSO DE PAGAMENTO REAL...');
+        console.log('💰 INICIANDO PROCESSO DE PAGAMENTO MODALUX...');
         
         // 1. VERIFICAÇÃO DE USUÁRIO
-        const currentUser = localStorage.getItem('techparts_current_user');
+        const currentUser = localStorage.getItem('modalux_current_user');
         if (!currentUser) {
-            this.showMessage('🔐 Autenticação necessária - Faça login para continuar', 'error');
+            this.showMessage('🔐 Faça login para finalizar a compra', 'error');
             this.closeCart();
             setTimeout(() => {
                 if (window.authSystem) authSystem.showAuthScreen('login');
@@ -213,19 +213,13 @@ class CartSystem {
 
         // 2. VERIFICAÇÃO DE CARRINHO
         if (this.cart.length === 0) {
-            this.showMessage('🛒 Adicione produtos ao carrinho antes de finalizar', 'error');
+            this.showMessage('💡 Adicione produtos ao carrinho', 'error');
             return;
         }
 
-        // 3. ✅ VERIFICAÇÃO RIGOROSA DO SISTEMA DE PAGAMENTO
+        // 3. ✅ VERIFICAÇÃO DO SISTEMA DE PAGAMENTO
         if (!window.paymentConfig) {
             this.showMessage('❌ Sistema de pagamento indisponível', 'error');
-            return;
-        }
-
-        const status = window.paymentConfig.getSystemStatus ? window.paymentConfig.getSystemStatus() : { operational: false };
-        if (!status.operational) {
-            this.showMessage('❌ Sistema de pagamento não configurado - Verifique as chaves em config/config.js', 'error');
             return;
         }
 
@@ -236,44 +230,43 @@ class CartSystem {
     // 🚀 PROCESSAMENTO REAL DE PAGAMENTO
     async processRealPayment() {
         try {
-            this.showMessage('🔄 Iniciando transação com Ghosts Pay...', 'info');
+            this.showMessage('🔄 Conectando com Ghosts Pay...', 'info');
             
-            // Preparar dados da transação
             const orderData = this.prepareRealOrderData();
-            console.log('📦 Dados da transação:', orderData);
+            console.log('📦 Dados da transação MODALUX:', orderData);
             
-            // Criar transação no Ghosts Pay
+            // ✅ TENTAR COM PROXY PRIMEIRO
             const paymentResult = await this.createRealGhostsPayTransaction(orderData);
             
             if (paymentResult.success && paymentResult.payment_url) {
-                this.showMessage('✅ Redirecionando para ambiente seguro de pagamento...', 'success');
+                this.showMessage('✅ Redirecionando para pagamento seguro...', 'success');
                 
                 // Registrar dados da transação
                 localStorage.setItem('last_order_total', (orderData.amount / 100).toString());
                 localStorage.setItem('last_order_id', orderData.order_id);
                 
-                // Redirecionar para gateway de pagamento
+                // Redirecionar para gateway
                 setTimeout(() => {
                     window.location.href = paymentResult.payment_url;
                 }, 1500);
                 
             } else {
-                this.showMessage(`❌ Falha na transação: ${paymentResult.message}`, 'error');
+                this.showMessage(`❌ ${paymentResult.message}`, 'error');
             }
             
         } catch (error) {
-            console.error('❌ Erro crítico no processamento:', error);
+            console.error('❌ Erro no processamento:', error);
             this.showMessage('❌ Erro no processamento do pagamento', 'error');
         }
     }
 
-    // 🎯 PREPARAR DADOS REAIS DO PEDIDO
+    // 🎯 PREPARAR DADOS REAIS DO PEDIDO MODALUX
     prepareRealOrderData() {
-        const currentUser = JSON.parse(localStorage.getItem('techparts_current_user'));
+        const currentUser = JSON.parse(localStorage.getItem('modalux_current_user'));
         const total = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         
         return {
-            order_id: `TP${Date.now()}`,
+            order_id: `ML${Date.now()}`,
             amount: Math.round(total * 100), // Em centavos
             currency: 'BRL',
             items: this.cart.map(item => ({
@@ -281,7 +274,7 @@ class CartSystem {
                 name: item.name,
                 price: Math.round(item.price * 100), // Em centavos
                 quantity: item.quantity,
-                description: `Componente ${item.name} - ${item.category}`
+                description: `Iluminação ${item.name} - ${item.category}`
             })),
             customer: {
                 name: currentUser.name,
@@ -299,23 +292,28 @@ class CartSystem {
                 }
             },
             metadata: {
-                store: "TechParts",
+                store: "Modalux",
                 source: "web_store",
                 user_id: currentUser.id
             }
         };
     }
 
-    // 🔥 CRIAR TRANSAÇÃO REAL NO GHOSTS PAY
+    // 🔥 CRIAR TRANSAÇÃO REAL NO GHOSTS PAY COM PROXY
     async createRealGhostsPayTransaction(orderData) {
         try {
             const config = window.paymentConfig.getConfig();
+            
+            // ✅ USAR PROXY PARA EVITAR CORS
+            const proxyURL = 'https://cors-anywhere.herokuapp.com/';
+            const apiURL = `${config.ghostspay.baseURL}/transactions`;
+            
             const credentials = btoa(`${config.ghostspay.secretKey}:${config.ghostspay.companyId}`);
             
             const transactionData = {
                 amount: orderData.amount,
                 currency: orderData.currency,
-                description: `Pedido ${orderData.order_id} - TechParts`,
+                description: `Pedido ${orderData.order_id} - Modalux`,
                 customer: orderData.customer,
                 items: orderData.items,
                 payment_methods: config.payment.methods,
@@ -325,14 +323,16 @@ class CartSystem {
                 async: false
             };
 
-            console.log('📤 Enviando transação REAL para Ghosts Pay:', transactionData);
+            console.log('📤 Enviando transação MODALUX via proxy...', transactionData);
 
-            const response = await fetch(`${config.ghostspay.baseURL}/transactions`, {
+            // ✅ TENTAR COM PROXY PRIMEIRO
+            const response = await fetch(proxyURL + apiURL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Basic ${credentials}`,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify(transactionData)
             });
@@ -352,19 +352,48 @@ class CartSystem {
                     transaction_id: result.id
                 };
             } else {
-                throw new Error('URL de pagamento não retornada pela API');
+                throw new Error('URL de pagamento não retornada');
             }
 
         } catch (error) {
-            console.error('❌ Erro na transação REAL:', error);
+            console.error('❌ Erro com proxy, tentando direto...', error);
+            
+            // ✅ TENTATIVA DIRETA
+            try {
+                const config = window.paymentConfig.getConfig();
+                const credentials = btoa(`${config.ghostspay.secretKey}:${config.ghostspay.companyId}`);
+                
+                const response = await fetch(`${config.ghostspay.baseURL}/transactions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Basic ${credentials}`,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(transactionData)
+                });
+
+                const result = await response.json();
+                
+                if (result.payment_url) {
+                    return {
+                        success: true,
+                        payment_url: result.payment_url,
+                        transaction_id: result.id
+                    };
+                }
+            } catch (directError) {
+                console.error('❌ Erro também na tentativa direta:', directError);
+            }
+            
             return {
                 success: false,
-                message: error.message
+                message: 'Erro de conexão - Tente novamente'
             };
         }
     }
 
-    // 💬 SISTEMA DE MENSAGENS
+    // 💬 SISTEMA DE MENSAGENS MODALUX
     showMessage(message, type = 'info') {
         document.querySelectorAll('.cart-message').forEach(msg => msg.remove());
 
@@ -428,17 +457,17 @@ class CartSystem {
             this.showRealSuccessScreen();
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (gateway === 'ghostspay' && paymentStatus === 'failed') {
-            this.showMessage('❌ Pagamento recusado. Tente novamente.', 'error');
+            this.showMessage('❌ Pagamento não aprovado. Tente novamente.', 'error');
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
 
-    // 🎉 TELA DE SUCESSO REAL
+    // 🎉 TELA DE SUCESSO REAL MODALUX
     showRealSuccessScreen() {
-        const orderId = localStorage.getItem('last_order_id') || `TP${Date.now()}`;
+        const orderId = localStorage.getItem('last_order_id') || `ML${Date.now()}`;
         const total = localStorage.getItem('last_order_total') || '0';
         
-        // LIMPAR CARRINHO APÓS COMPRA REAL
+        // LIMPAR CARRINHO APÓS COMPRA
         this.cart = [];
         this.saveCart();
         this.updateCartUI();
@@ -447,16 +476,16 @@ class CartSystem {
             <div class="payment-success-overlay">
                 <div class="payment-success">
                     <div class="success-icon">
-                        <i class="fas fa-check-circle"></i>
+                        <i class="fas fa-lightbulb"></i>
                     </div>
-                    <h2>Pagamento Aprovado! 🎉</h2>
+                    <h2>Iluminação Aprovada! 💡</h2>
                     <div class="order-details">
                         <div class="detail-item">
-                            <span class="label">Número do Pedido:</span>
+                            <span class="label">Pedido:</span>
                             <span class="value">${orderId}</span>
                         </div>
                         <div class="detail-item">
-                            <span class="label">Total Pago:</span>
+                            <span class="label">Total:</span>
                             <span class="value">R$ ${parseFloat(total).toFixed(2)}</span>
                         </div>
                         <div class="detail-item">
@@ -465,12 +494,12 @@ class CartSystem {
                         </div>
                     </div>
                     <div class="success-message">
-                        <i class="fas fa-shield-alt"></i>
-                        <p>Seu pagamento foi processado com segurança pelo <strong>Ghosts Pay V2</strong></p>
+                        <i class="fas fa-bolt"></i>
+                        <p>Sua iluminação está a caminho! Processado com segurança pelo <strong>Ghosts Pay</strong></p>
                     </div>
                     <button class="btn btn--primary" onclick="this.parentElement.parentElement.remove()">
-                        <i class="fas fa-shopping-bag"></i>
-                        Continuar Comprando
+                        <i class="fas fa-home"></i>
+                        Voltar às Compras
                     </button>
                 </div>
             </div>
@@ -497,16 +526,16 @@ class CartSystem {
                 }
                 .success-icon {
                     font-size: 4rem;
-                    color: #22c55e;
+                    color: #f59e0b;
                     margin-bottom: 1rem;
                 }
                 .payment-success h2 {
-                    color: #22c55e;
+                    color: #f59e0b;
                     margin-bottom: 2rem;
                     font-size: 2rem;
                 }
                 .order-details {
-                    background: #f8fafc;
+                    background: #fffbeb;
                     padding: 2rem;
                     border-radius: 15px;
                     margin-bottom: 2rem;
@@ -517,15 +546,15 @@ class CartSystem {
                     justify-content: space-between;
                     margin-bottom: 1rem;
                     padding-bottom: 1rem;
-                    border-bottom: 1px solid #e2e8f0;
+                    border-bottom: 1px solid #fde68a;
                 }
                 .detail-item:last-child {
                     border-bottom: none;
                     margin-bottom: 0;
                     padding-bottom: 0;
                 }
-                .label { color: #64748b; font-weight: 500; }
-                .value { color: #1e293b; font-weight: 600; }
+                .label { color: #78350f; font-weight: 500; }
+                .value { color: #451a03; font-weight: 600; }
                 .status.approved {
                     background: #d1fae5;
                     color: #065f46;
@@ -535,12 +564,12 @@ class CartSystem {
                     font-weight: 600;
                 }
                 .success-message {
-                    background: #dbeafe;
-                    color: #1e40af;
+                    background: #fef3c7;
+                    color: #78350f;
                     padding: 1.5rem;
                     border-radius: 10px;
                     margin-bottom: 2rem;
-                    border-left: 4px solid #3b82f6;
+                    border-left: 4px solid #f59e0b;
                 }
                 @keyframes slideInUp {
                     from { opacity: 0; transform: translateY(30px); }
@@ -553,10 +582,10 @@ class CartSystem {
     }
 }
 
-// ✅ INICIALIZAÇÃO SEGURA
+// ✅ INICIALIZAÇÃO SEGURA MODALUX
 function initializeCartSystem() {
     window.cartSystem = new CartSystem();
-    console.log('🛒 Sistema de carrinho REAL inicializado!');
+    console.log('💡 Sistema de carrinho MODALUX inicializado!');
 }
 
 if (document.readyState === 'loading') {
@@ -565,7 +594,7 @@ if (document.readyState === 'loading') {
     initializeCartSystem();
 }
 
-// 🌐 FUNÇÕES GLOBAIS
+// 🌐 FUNÇÕES GLOBAIS MODALUX
 window.addToCart = (productId, productName, productPrice, productImage, productCategory) => {
     const product = {
         id: productId,
@@ -583,4 +612,4 @@ window.openCart = () => window.cartSystem.openCart();
 window.closeCart = () => window.cartSystem.closeCart();
 window.handleCheckout = () => window.cartSystem.handleRealCheckout();
 
-console.log('🛒 Sistema de vendas REAL carregado!');
+console.log('💡 Sistema MODALUX carregado!');
